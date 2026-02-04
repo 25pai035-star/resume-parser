@@ -5,17 +5,24 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import re
 
-app = FastAPI()
+app = FastAPI(title="Resume Parser API")
 
 # -------------------------
-# CORS (local + production safe)
+# CORS
 # -------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # OK for now (later restrict)
+    allow_origins=["*"],  # tighten later
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# -------------------------
+# Health / Home
+# -------------------------
+@app.get("/")
+def home():
+    return {"message": "Backend is live"}
 
 # -------------------------
 # Helper NLP functions
@@ -29,7 +36,7 @@ def extract_text(file):
     return text.lower()
 
 def extract_experience(text):
-    years = re.findall(r'(\d+)\s+years?', text)
+    years = re.findall(r"(\d+)\s+years?", text)
     return max([int(y) for y in years], default=0)
 
 def extract_keywords(text, top_n=8):
@@ -38,11 +45,6 @@ def extract_keywords(text, top_n=8):
     return list(vectorizer.get_feature_names_out())[:top_n]
 
 def check_eligibility(match_score, experience, min_score=40, min_exp=1):
-    """
-    Simple eligibility rule:
-    - Match score >= 40%
-    - Experience >= 1 year
-    """
     if match_score >= min_score and experience >= min_exp:
         return "ELIGIBLE"
     return "NOT ELIGIBLE"
@@ -70,23 +72,13 @@ async def parse_resumes(
     for i, text in enumerate(resume_texts):
         experience = extract_experience(text)
         match_score = round(scores[i] * 100, 2)
-        eligibility = check_eligibility(match_score, experience)
 
         results.append({
             "filename": filenames[i],
             "keywords": extract_keywords(text),
             "experience": experience,
             "match_score": match_score,
-            "eligibility": eligibility
+            "eligibility": check_eligibility(match_score, experience)
         })
 
     return results
-
-from fastapi import FastAPI
-
-app = FastAPI()
-
-@app.get("/")
-def home():
-    return {"message": "Backend is live"}
-
