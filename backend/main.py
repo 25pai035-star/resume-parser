@@ -88,7 +88,5 @@ app = FastAPI()
 
 @app.get("/")
 def home():
-    return {
-        "status": "OK",
-        "message": "Resume Parser backend is live 🚀"
-    }
+    return {"message": "Backend is live"}
+
