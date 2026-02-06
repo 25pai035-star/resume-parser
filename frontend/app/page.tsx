@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseclient";
- // Use the shared Supabase client
+
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
