@@ -2,11 +2,10 @@ import "./globals.css";
 
 export const metadata = {
   title: "Smart Resume Parser",
-  description: "AI-powered resume screening"
 };
 
 export default function RootLayout({
-  children
+  children,
 }: {
   children: React.ReactNode;
 }) {
