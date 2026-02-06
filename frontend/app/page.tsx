@@ -1,14 +1,8 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from "../lib/supabaseclient";
+ // Use the shared Supabase client
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
@@ -23,6 +17,7 @@ export default function Home() {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, []);
 
+  // ---------- AUTH FUNCTIONS ----------
   async function login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) alert(error.message);
@@ -40,6 +35,7 @@ export default function Home() {
     setUser(null);
   }
 
+  // ---------- SUBMIT FUNCTION ----------
   async function submit() {
     if (!jd || files.length === 0) {
       alert("Add job description and resumes");
@@ -53,10 +49,10 @@ export default function Home() {
     files.forEach(f => formData.append("files", f));
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/parse-resumes/`,
-        { method: "POST", body: formData }
-      );
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parse-resumes/`, {
+        method: "POST",
+        body: formData,
+      });
 
       if (!res.ok) throw new Error("Backend not running");
       setResults(await res.json());
@@ -67,16 +63,14 @@ export default function Home() {
     setLoading(false);
   }
 
-  /* ---------- AUTH UI ---------- */
+  // ---------- AUTH UI ----------
   if (!user) {
     return (
       <div style={center}>
         <div style={card}>
           <h2 style={{ marginBottom: 20 }}>Login / Sign Up</h2>
-
           <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} style={input} />
           <input placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} style={input} />
-
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={login} style={btnBlue}>Login</button>
             <button onClick={signup} style={btnGreen}>Sign Up</button>
@@ -86,7 +80,7 @@ export default function Home() {
     );
   }
 
-  /* ---------- MAIN UI ---------- */
+  // ---------- MAIN UI ----------
   return (
     <div style={{ maxWidth: 900, margin: "auto", padding: 40 }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -94,9 +88,19 @@ export default function Home() {
         <button onClick={logout} style={btnRed}>Logout</button>
       </div>
 
-      <textarea placeholder="Paste Job Description..." value={jd} onChange={e => setJd(e.target.value)} style={textarea} />
+      <textarea
+        placeholder="Paste Job Description..."
+        value={jd}
+        onChange={e => setJd(e.target.value)}
+        style={textarea}
+      />
 
-      <input type="file" multiple accept=".pdf" onChange={e => setFiles(Array.from(e.target.files || []))} />
+      <input
+        type="file"
+        multiple
+        accept=".pdf"
+        onChange={e => setFiles(Array.from(e.target.files || []))}
+      />
 
       <button onClick={submit} disabled={loading} style={btnBlue}>
         {loading ? "Parsing..." : "Parse Resumes"}
@@ -115,7 +119,7 @@ export default function Home() {
   );
 }
 
-/* ---------- styles ---------- */
+/* ---------- STYLES ---------- */
 const center = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" };
 const card = { background: "#fff", padding: 30, borderRadius: 12, width: 320 };
 const input = { width: "100%", padding: 10, marginBottom: 10 };
