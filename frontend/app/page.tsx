@@ -4,17 +4,17 @@ import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
 );
 
 export default function Home() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<any>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [files, setFiles] = useState([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [jd, setJd] = useState("");
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export default function Home() {
 
   async function submit() {
     if (!jd || files.length === 0) {
-      alert("Add job description and resumes");
+      alert("Please add job description and resumes");
       return;
     }
 
@@ -51,106 +51,50 @@ export default function Home() {
     files.forEach(f => formData.append("files", f));
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parse-resumes/`, {
-        method: "POST",
-        body: formData,
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/parse-resumes/`,
+        { method: "POST", body: formData }
+      );
 
       if (!res.ok) throw new Error("Backend not running");
 
-      const data = await res.json();
-      setResults(data);
-    } catch (err) {
+      setResults(await res.json());
+    } catch (err: any) {
       alert(err.message);
     }
 
     setLoading(false);
   }
 
-  // ------------------ Auth UI ------------------
+  /* ---------------- AUTH UI ---------------- */
   if (!user) {
     return (
-      <div style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        background: "#f5f5f5",
-        fontFamily: "Arial, sans-serif"
-      }}>
-        <div style={{
-          background: "#fff",
-          padding: "40px 30px",
-          borderRadius: "12px",
-          boxShadow: "0 8px 20px rgba(0,0,0,0.1)",
-          width: "350px"
-        }}>
-          <h2 style={{ textAlign: "center", marginBottom: "30px" }}>Login / Sign Up</h2>
+      <div style={styles.centerPage}>
+        <div style={styles.card}>
+          <h2 style={styles.title}>Smart Resume Parser</h2>
+          <p style={styles.subtitle}>Login or create an account</p>
+
           <input
+            style={styles.input}
             type="email"
             placeholder="Email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "12px 15px",
-              marginBottom: "15px",
-              borderRadius: "8px",
-              border: "1px solid #ccc",
-              fontSize: "14px"
-            }}
           />
+
           <input
+            style={styles.input}
             type="password"
             placeholder="Password"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "12px 15px",
-              marginBottom: "20px",
-              borderRadius: "8px",
-              border: "1px solid #ccc",
-              fontSize: "14px"
-            }}
           />
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <button
-              onClick={login}
-              style={{
-                flex: 1,
-                marginRight: "10px",
-                padding: "12px 0",
-                border: "none",
-                borderRadius: "8px",
-                background: "#4f46e5",
-                color: "#fff",
-                fontWeight: "bold",
-                cursor: "pointer",
-                transition: "0.2s"
-              }}
-              onMouseOver={e => e.currentTarget.style.background = "#4338ca"}
-              onMouseOut={e => e.currentTarget.style.background = "#4f46e5"}
-            >
+
+          <div style={{ display: "flex", gap: 12 }}>
+            <button style={styles.primaryBtn} onClick={login}>
               Login
             </button>
-            <button
-              onClick={signup}
-              style={{
-                flex: 1,
-                padding: "12px 0",
-                border: "none",
-                borderRadius: "8px",
-                background: "#10b981",
-                color: "#fff",
-                fontWeight: "bold",
-                cursor: "pointer",
-                transition: "0.2s"
-              }}
-              onMouseOver={e => e.currentTarget.style.background = "#059669"}
-              onMouseOut={e => e.currentTarget.style.background = "#10b981"}
-            >
+            <button style={styles.secondaryBtn} onClick={signup}>
               Sign Up
             </button>
           </div>
@@ -159,97 +103,43 @@ export default function Home() {
     );
   }
 
-  // ------------------ Main App UI ------------------
+  /* ---------------- MAIN APP UI ---------------- */
   return (
-    <div style={{ fontFamily: "Arial, sans-serif", padding: "40px", maxWidth: "900px", margin: "auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div style={styles.page}>
+      <header style={styles.header}>
         <h1>Smart Resume Parser</h1>
-        <button
-          onClick={logout}
-          style={{
-            padding: "10px 20px",
-            borderRadius: "8px",
-            border: "none",
-            background: "#ef4444",
-            color: "#fff",
-            cursor: "pointer",
-            fontWeight: "bold",
-            transition: "0.2s"
-          }}
-          onMouseOver={e => e.currentTarget.style.background = "#dc2626"}
-          onMouseOut={e => e.currentTarget.style.background = "#ef4444"}
-        >
+        <button style={styles.logoutBtn} onClick={logout}>
           Logout
         </button>
-      </div>
+      </header>
 
-      <div style={{ marginTop: "30px" }}>
+      <div style={styles.card}>
+        <label style={styles.label}>Job Description</label>
         <textarea
-          placeholder="Paste Job Description here..."
+          style={styles.textarea}
+          placeholder="Paste job description here..."
           value={jd}
           onChange={e => setJd(e.target.value)}
-          style={{
-            width: "100%",
-            minHeight: "120px",
-            padding: "15px",
-            borderRadius: "10px",
-            border: "1px solid #ccc",
-            fontSize: "14px",
-            resize: "vertical"
-          }}
         />
 
+        <label style={styles.label}>Upload Resumes (PDF)</label>
         <input
           type="file"
           multiple
           accept=".pdf"
           onChange={e => setFiles([...e.target.files])}
-          style={{
-            marginTop: "20px",
-            padding: "10px",
-            borderRadius: "8px",
-            border: "1px solid #ccc",
-            cursor: "pointer"
-          }}
         />
 
-        <button
-          onClick={submit}
-          disabled={loading}
-          style={{
-            marginTop: "20px",
-            width: "100%",
-            padding: "15px",
-            border: "none",
-            borderRadius: "10px",
-            background: "#4f46e5",
-            color: "#fff",
-            fontWeight: "bold",
-            fontSize: "16px",
-            cursor: "pointer",
-            transition: "0.2s"
-          }}
-          onMouseOver={e => e.currentTarget.style.background = "#4338ca"}
-          onMouseOut={e => e.currentTarget.style.background = "#4f46e5"}
-        >
+        <button style={styles.primaryBtn} onClick={submit} disabled={loading}>
           {loading ? "Parsing..." : "Parse Resumes"}
         </button>
       </div>
 
       {results.length > 0 && (
-        <div style={{ marginTop: "40px" }}>
+        <div style={{ marginTop: 30 }}>
           {results.map((r, i) => (
-            <div
-              key={i}
-              style={{
-                padding: "20px",
-                border: "1px solid #ccc",
-                borderRadius: "10px",
-                marginBottom: "20px",
-                background: "#f9f9f9"
-              }}
-            >
-              <h3 style={{ marginBottom: "10px" }}>{r.filename}</h3>
+            <div key={i} style={styles.resultCard}>
+              <h3>{r.filename}</h3>
               <p><b>Keywords:</b> {r.keywords.join(", ")}</p>
               <p><b>Experience:</b> {r.experience} years</p>
               <p><b>Match Score:</b> {r.match_score}%</p>
@@ -257,15 +147,13 @@ export default function Home() {
                 <b>Status:</b>{" "}
                 <span
                   style={{
-                    color: r.eligibility === "ELIGIBLE" ? "green" : "red",
+                    color: r.eligibility === "ELIGIBLE" ? "#16a34a" : "#dc2626",
                     fontWeight: "bold"
-                    }}
-              >
-                {r.eligibility}
-              </span>
-            </p>
-              
-              
+                  }}
+                >
+                  {r.eligibility}
+                </span>
+              </p>
             </div>
           ))}
         </div>
@@ -273,3 +161,101 @@ export default function Home() {
     </div>
   );
 }
+
+/* ---------------- STYLES ---------------- */
+
+const styles: { [key: string]: React.CSSProperties } = {
+  centerPage: {
+    minHeight: "100vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#f1f5f9"
+  },
+  page: {
+    maxWidth: 900,
+    margin: "40px auto",
+    padding: "0 20px",
+    fontFamily: "Arial, Helvetica, sans-serif"
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 30
+  },
+  card: {
+    background: "#ffffff",
+    padding: 24,
+    borderRadius: 12,
+    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+    marginBottom: 20
+  },
+  resultCard: {
+    background: "#f8fafc",
+    padding: 20,
+    borderRadius: 10,
+    marginBottom: 16,
+    border: "1px solid #e5e7eb"
+  },
+  title: {
+    textAlign: "center",
+    marginBottom: 6
+  },
+  subtitle: {
+    textAlign: "center",
+    marginBottom: 20,
+    color: "#64748b"
+  },
+  label: {
+    fontWeight: "bold",
+    marginBottom: 6,
+    display: "block"
+  },
+  input: {
+    width: "100%",
+    padding: "12px 14px",
+    marginBottom: 14,
+    borderRadius: 8,
+    border: "1px solid #cbd5e1",
+    fontSize: 14
+  },
+  textarea: {
+    width: "100%",
+    minHeight: 120,
+    padding: 14,
+    marginBottom: 14,
+    borderRadius: 8,
+    border: "1px solid #cbd5e1",
+    resize: "vertical"
+  },
+  primaryBtn: {
+    width: "100%",
+    padding: "12px",
+    background: "#4f46e5",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: 8,
+    fontWeight: "bold",
+    cursor: "pointer",
+    marginTop: 10
+  },
+  secondaryBtn: {
+    width: "100%",
+    padding: "12px",
+    background: "#10b981",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: 8,
+    fontWeight: "bold",
+    cursor: "pointer"
+  },
+  logoutBtn: {
+    padding: "8px 14px",
+    background: "#ef4444",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: 8,
+    cursor: "pointer"
+  }
+};
