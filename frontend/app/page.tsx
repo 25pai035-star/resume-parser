@@ -128,7 +128,7 @@ export default function Home() {
   return (
     <div style={{ maxWidth: 900, margin: "auto", padding: 40 }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <h1>Smart Resume Parser</h1>
+        <h1>Smart Resume Parser App</h1>
         <button onClick={logout} style={btnRed}>
           Logout
         </button>
