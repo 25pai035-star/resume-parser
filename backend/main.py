@@ -2,31 +2,25 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from PyPDF2 import PdfReader
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 import re
 
 app = FastAPI(title="Resume Parser API")
 
-# -------------------------
-# CORS
-# -------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten later
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# -------------------------
-# Health / Home
-# -------------------------
 @app.get("/")
 def home():
     return {"message": "Backend is live"}
 
 # -------------------------
-# Helper NLP functions
+# Helpers
 # -------------------------
+
 def extract_text(file):
     reader = PdfReader(file)
     text = ""
@@ -36,48 +30,63 @@ def extract_text(file):
     return text.lower()
 
 def extract_experience(text):
-    years = re.findall(r"(\d+)\s+years?", text)
-    return max([int(y) for y in years], default=0)
+    patterns = [
+        r"(\d+)\+?\s*(years|yrs)",
+        r"experience\s*[:\-]?\s*(\d+)"
+    ]
+    years = []
+    for p in patterns:
+        matches = re.findall(p, text)
+        for m in matches:
+            years.append(int(m[0]))
+    return max(years, default=0)
 
-def extract_keywords(text, top_n=8):
-    vectorizer = TfidfVectorizer(stop_words="english", max_features=50)
+def clean_words(text):
+    return set(re.findall(r"[a-zA-Z]{2,}", text.lower()))
+
+def extract_keywords_tfidf(text, top_n=12):
+    vectorizer = TfidfVectorizer(stop_words="english")
     vectorizer.fit([text])
-    return list(vectorizer.get_feature_names_out())[:top_n]
+    return vectorizer.get_feature_names_out()[:top_n].tolist()
 
-def check_eligibility(match_score, experience, min_score=40, min_exp=1):
-    if match_score >= min_score and experience >= min_exp:
+def calculate_match(job_keywords, resume_words):
+    matched = [kw for kw in job_keywords if kw in resume_words]
+    score = round((len(matched) / len(job_keywords)) * 100, 2) if job_keywords else 0
+    return score, matched
+
+def check_eligibility(match_score, experience):
+    if match_score >= 40:
+        return "ELIGIBLE"
+    if match_score >= 25 and experience >= 1:
         return "ELIGIBLE"
     return "NOT ELIGIBLE"
 
 # -------------------------
-# API Endpoint
+# API
 # -------------------------
+
 @app.post("/parse-resumes/")
 async def parse_resumes(
     job_description: str = Form(...),
     files: list[UploadFile] = File(...)
 ):
-    resume_texts = []
-    filenames = []
-
-    for file in files:
-        resume_texts.append(extract_text(file.file))
-        filenames.append(file.filename)
-
-    vectorizer = TfidfVectorizer(stop_words="english")
-    vectors = vectorizer.fit_transform([job_description] + resume_texts)
-    scores = cosine_similarity(vectors[0:1], vectors[1:])[0]
+    job_keywords = extract_keywords_tfidf(job_description.lower())
 
     results = []
-    for i, text in enumerate(resume_texts):
-        experience = extract_experience(text)
-        match_score = round(scores[i] * 100, 2)
+
+    for file in files:
+        resume_text = extract_text(file.file)
+        resume_words = clean_words(resume_text)
+
+        match_score, matched_keywords = calculate_match(job_keywords, resume_words)
+        experience = extract_experience(resume_text)
 
         results.append({
-            "filename": filenames[i],
-            "keywords": extract_keywords(text),
-            "experience": experience,
+            "filename": file.filename,
+            "job_keywords": job_keywords,
+            "matched_keywords": matched_keywords,
             "match_score": match_score,
+            "experience": experience,
             "eligibility": check_eligibility(match_score, experience)
         })
 
