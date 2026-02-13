@@ -120,6 +120,7 @@ async def parse_resumes(
     job_description: str = Form(...),
     files: list[UploadFile] = File(...)
 ):
+    # JOB DESCRIPTION PROCESSING
     job_tokens = tokenize_and_clean(job_description.lower())
     job_processed = stem_and_lemmatize(job_tokens)
     job_keywords = extract_keywords_tfidf(" ".join(job_processed))
@@ -129,13 +130,15 @@ async def parse_resumes(
     for file in files:
         resume_text = extract_text(file.file)
 
+        # RESUME PROCESSING
         resume_tokens = tokenize_and_clean(resume_text)
         resume_processed = stem_and_lemmatize(resume_tokens)
 
-        corrected_resume_words = set(
+        # SPELLING CORRECTION
+        corrected_resume_words = {
             correct_spelling(word, job_keywords)
             for word in resume_processed
-        )
+        }
 
         match_score, matched_keywords = calculate_match(
             job_keywords,
