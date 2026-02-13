@@ -10,13 +10,22 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer, WordNetLemmatizer
 import Levenshtein
 
-import nltk
+# -------------------------
+# NLTK SAFE DOWNLOAD
+# -------------------------
+def download_nltk_data():
+    resources = ["punkt", "stopwords", "wordnet", "omw-1.4"]
+    for r in resources:
+        try:
+            nltk.data.find(r)
+        except LookupError:
+            nltk.download(r)
 
-nltk.download("punkt")
-nltk.download("stopwords")
-nltk.download("wordnet")
-nltk.download("omw-1.4")
+download_nltk_data()
 
+# -------------------------
+# APP SETUP
+# -------------------------
 app = FastAPI(title="Resume Parser API")
 
 app.add_middleware(
@@ -26,10 +35,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def home():
+    return {"message": "Backend is live"}
+
 # -------------------------
 # NLP SETUP
 # -------------------------
-
 stop_words = set(stopwords.words("english"))
 stemmer = PorterStemmer()
 lemmatizer = WordNetLemmatizer()
@@ -37,7 +49,6 @@ lemmatizer = WordNetLemmatizer()
 # -------------------------
 # HELPERS
 # -------------------------
-
 def extract_text(file):
     reader = PdfReader(file)
     text = ""
@@ -49,42 +60,28 @@ def extract_text(file):
 
 def tokenize_and_clean(text):
     tokens = word_tokenize(text)
-    words = [
-        w for w in tokens
-        if w.isalpha() and w not in stop_words
-    ]
-    return words
+    return [w for w in tokens if w.isalpha() and w not in stop_words]
 
 
 def stem_and_lemmatize(words):
-    processed = []
-    for w in words:
-        lemma = lemmatizer.lemmatize(w)
-        stem = stemmer.stem(lemma)
-        processed.append(stem)
-    return processed
+    return [stemmer.stem(lemmatizer.lemmatize(w)) for w in words]
 
 
 def correct_spelling(word, vocabulary, threshold=0.8):
-    """
-    Correct word using Levenshtein similarity
-    """
     best_match = word
     best_score = 0
-
     for vocab_word in vocabulary:
         score = Levenshtein.ratio(word, vocab_word)
         if score > best_score:
             best_score = score
             best_match = vocab_word
-
     return best_match if best_score >= threshold else word
 
 
 def extract_keywords_tfidf(text, top_n=12):
     vectorizer = TfidfVectorizer(stop_words="english")
-    tfidf_matrix = vectorizer.fit_transform([text])
-    scores = zip(vectorizer.get_feature_names_out(), tfidf_matrix.toarray()[0])
+    tfidf = vectorizer.fit_transform([text])
+    scores = zip(vectorizer.get_feature_names_out(), tfidf.toarray()[0])
     sorted_words = sorted(scores, key=lambda x: x[1], reverse=True)
     return [w for w, _ in sorted_words[:top_n]]
 
@@ -118,16 +115,13 @@ def check_eligibility(match_score, experience):
 # -------------------------
 # API
 # -------------------------
-
 @app.post("/parse-resumes/")
 async def parse_resumes(
     job_description: str = Form(...),
     files: list[UploadFile] = File(...)
 ):
-    # JOB DESCRIPTION PROCESSING
     job_tokens = tokenize_and_clean(job_description.lower())
     job_processed = stem_and_lemmatize(job_tokens)
-
     job_keywords = extract_keywords_tfidf(" ".join(job_processed))
 
     results = []
@@ -135,13 +129,9 @@ async def parse_resumes(
     for file in files:
         resume_text = extract_text(file.file)
 
-        # TOKENIZATION
         resume_tokens = tokenize_and_clean(resume_text)
-
-        # STEMMING + LEMMATIZATION
         resume_processed = stem_and_lemmatize(resume_tokens)
 
-        # SPELLING CORRECTION
         corrected_resume_words = set(
             correct_spelling(word, job_keywords)
             for word in resume_processed
